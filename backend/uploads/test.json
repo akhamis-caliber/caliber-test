@@ -1,0 +1,42 @@
+[
+  {
+    "Domain":"example.com",
+    "Impressions":1000,
+    "CTR":0.02,
+    "Conversions":5,
+    "Total Spend":100,
+    "CPM":15.2
+  },
+  {
+    "Domain":"test.com",
+    "Impressions":2000,
+    "CTR":0.03,
+    "Conversions":10,
+    "Total Spend":200,
+    "CPM":18.5
+  },
+  {
+    "Domain":"sample.com",
+    "Impressions":1500,
+    "CTR":0.025,
+    "Conversions":8,
+    "Total Spend":150,
+    "CPM":16.8
+  },
+  {
+    "Domain":"demo.com",
+    "Impressions":3000,
+    "CTR":0.035,
+    "Conversions":15,
+    "Total Spend":300,
+    "CPM":20.1
+  },
+  {
+    "Domain":"site.com",
+    "Impressions":2500,
+    "CTR":0.028,
+    "Conversions":12,
+    "Total Spend":250,
+    "CPM":17.9
+  }
+]

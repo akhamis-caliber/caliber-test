@@ -1,0 +1,2 @@
+# This file ensures the storage directory is tracked by git
+# The directory is used for storing uploaded files and generated reports 
