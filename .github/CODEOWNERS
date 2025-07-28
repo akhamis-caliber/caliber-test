@@ -1,0 +1,15 @@
+# Global owners
+* @project-admin
+
+# Backend
+/backend/ @backend-team
+
+# Frontend
+/frontend/ @frontend-team
+
+# Documentation
+/docs/ @docs-team
+
+# Infrastructure
+/docker-compose.yml @devops-team
+/.github/ @devops-team 
