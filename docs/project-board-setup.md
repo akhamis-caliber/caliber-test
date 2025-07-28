@@ -21,39 +21,45 @@ The Caliber project board uses a **Kanban-style** workflow to track tasks from c
 
 Set up the following columns in order:
 
-| Column | Purpose | Automation |
-|--------|---------|------------|
-| **Backlog** | New issues and ideas | Auto-add new issues |
-| **To Do** | Prioritized tasks ready to work on | Manual assignment |
-| **In Progress** | Currently being worked on | Auto-move when PR created |
-| **Review** | Ready for code review | Auto-move when PR ready |
-| **Testing** | Ready for testing | Manual assignment |
-| **Done** | Completed and deployed | Auto-move when merged |
+| Column          | Purpose                            | Automation                |
+| --------------- | ---------------------------------- | ------------------------- |
+| **Backlog**     | New issues and ideas               | Auto-add new issues       |
+| **To Do**       | Prioritized tasks ready to work on | Manual assignment         |
+| **In Progress** | Currently being worked on          | Auto-move when PR created |
+| **Review**      | Ready for code review              | Auto-move when PR ready   |
+| **Testing**     | Ready for testing                  | Manual assignment         |
+| **Done**        | Completed and deployed             | Auto-move when merged     |
 
 ## 🔄 Workflow Automation
 
 ### 1. Issue Automation
 
 **When issues are created:**
+
 - Automatically move to **Backlog**
 
 **When issues are assigned:**
+
 - Move to **To Do**
 
 ### 2. Pull Request Automation
 
 **When PRs are opened:**
+
 - Move linked issues to **In Progress**
 
 **When PRs are ready for review:**
+
 - Move linked issues to **Review**
 
 **When PRs are merged:**
+
 - Move linked issues to **Done**
 
 ### 3. Manual Workflow
 
 **Development Process:**
+
 1. **Backlog** → **To Do**: Prioritize and assign
 2. **To Do** → **In Progress**: Start working
 3. **In Progress** → **Review**: Submit PR
@@ -102,18 +108,21 @@ Set up the following columns in order:
 ### 2. Sprint Process
 
 **Planning Meeting:**
+
 1. Review previous sprint
 2. Prioritize backlog items
 3. Estimate effort
 4. Assign tasks to team members
 
 **Daily Standup:**
+
 1. Update task status
 2. Move cards between columns
 3. Identify blockers
 4. Plan next steps
 
 **Sprint Review:**
+
 1. Demo completed features
 2. Review metrics
 3. Gather feedback
@@ -124,11 +133,13 @@ Set up the following columns in order:
 ### 1. Creating Issues
 
 **Use templates:**
+
 - Bug reports: Use bug report template
 - Feature requests: Use feature request template
 - Tasks: Use task template
 
 **Include:**
+
 - Clear description
 - Acceptance criteria
 - Estimated effort
@@ -143,32 +154,36 @@ Create `.github/ISSUE_TEMPLATE/task.md`:
 ---
 name: Task
 about: Create a task for the project
-title: ''
-labels: 'task'
-assignees: ''
-
+title: ""
+labels: "task"
+assignees: ""
 ---
 
 ## Description
+
 Brief description of the task
 
 ## Acceptance Criteria
+
 - [ ] Criterion 1
 - [ ] Criterion 2
 - [ ] Criterion 3
 
 ## Estimated Effort
+
 - [ ] Small (1-2 days)
 - [ ] Medium (3-5 days)
 - [ ] Large (1+ weeks)
 
 ## Additional Information
+
 Any other relevant details
 ```
 
 ### 3. Task Estimation
 
 **Story Points:**
+
 - 1 point: Simple task (1-2 hours)
 - 2 points: Small task (3-8 hours)
 - 3 points: Medium task (1-2 days)
@@ -180,6 +195,7 @@ Any other relevant details
 ### 1. Velocity Tracking
 
 Track story points completed per sprint:
+
 - **Sprint 1**: 15 points
 - **Sprint 2**: 18 points
 - **Sprint 3**: 12 points
@@ -187,6 +203,7 @@ Track story points completed per sprint:
 ### 2. Burndown Charts
 
 Monitor progress throughout sprint:
+
 - Daily updates
 - Trend analysis
 - Risk identification
@@ -194,6 +211,7 @@ Monitor progress throughout sprint:
 ### 3. Lead Time Metrics
 
 Track time from creation to completion:
+
 - **Average lead time**: 5 days
 - **Cycle time**: 3 days
 - **Deployment frequency**: Daily
@@ -203,6 +221,7 @@ Track time from creation to completion:
 ### 1. Product Owner
 
 **Responsibilities:**
+
 - Prioritize backlog
 - Define acceptance criteria
 - Make product decisions
@@ -211,6 +230,7 @@ Track time from creation to completion:
 ### 2. Scrum Master
 
 **Responsibilities:**
+
 - Facilitate meetings
 - Remove blockers
 - Track metrics
@@ -219,6 +239,7 @@ Track time from creation to completion:
 ### 3. Development Team
 
 **Responsibilities:**
+
 - Estimate tasks
 - Update task status
 - Participate in reviews
@@ -229,6 +250,7 @@ Track time from creation to completion:
 ### 1. Weekly Cleanup
 
 **Every Friday:**
+
 - Archive completed items
 - Update stale issues
 - Review blocked items
@@ -237,6 +259,7 @@ Track time from creation to completion:
 ### 2. Monthly Review
 
 **Every month:**
+
 - Analyze metrics
 - Identify process improvements
 - Update automation rules
@@ -245,6 +268,7 @@ Track time from creation to completion:
 ### 3. Quarterly Planning
 
 **Every quarter:**
+
 - Set team goals
 - Plan major features
 - Review team capacity
@@ -293,6 +317,7 @@ Track time from creation to completion:
 ### 1. Retrospectives
 
 **After each sprint:**
+
 - What went well?
 - What could be improved?
 - Action items for next sprint
@@ -300,6 +325,7 @@ Track time from creation to completion:
 ### 2. Process Updates
 
 **Regular reviews:**
+
 - Update automation rules
 - Modify column structure
 - Adjust estimation process
@@ -308,6 +334,7 @@ Track time from creation to completion:
 ### 3. Team Training
 
 **Ongoing:**
+
 - Board usage training
 - Process documentation
 - Best practices sharing
@@ -357,4 +384,4 @@ Track time from creation to completion:
 - [ ] Team feedback
 - [ ] Metric tracking
 
-Remember: The project board is a tool to help your team work more effectively. Adapt it to your team's needs and continuously improve the process! 🚀 
+Remember: The project board is a tool to help your team work more effectively. Adapt it to your team's needs and continuously improve the process! 🚀

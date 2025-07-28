@@ -1,10 +1,9 @@
 ---
 name: Bug report
 about: Create a report to help us improve
-title: ''
-labels: 'bug'
-assignees: ''
-
+title: ""
+labels: "bug"
+assignees: ""
 ---
 
 **Describe the bug**
@@ -12,6 +11,7 @@ A clear and concise description of what the bug is.
 
 **To Reproduce**
 Steps to reproduce the behavior:
+
 1. Go to '...'
 2. Click on '....'
 3. Scroll down to '....'
@@ -24,11 +24,12 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Environment:**
- - OS: [e.g. Windows 10]
- - Browser: [e.g. Chrome 120]
- - Node.js: [e.g. 18.17.0]
- - Python: [e.g. 3.11.0]
- - Version: [e.g. 1.0.0]
+
+- OS: [e.g. Windows 10]
+- Browser: [e.g. Chrome 120]
+- Node.js: [e.g. 18.17.0]
+- Python: [e.g. 3.11.0]
+- Version: [e.g. 1.0.0]
 
 **Additional context**
-Add any other context about the problem here. 
+Add any other context about the problem here.

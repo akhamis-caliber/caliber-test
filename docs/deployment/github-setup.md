@@ -32,11 +32,13 @@ git push -u origin develop
 **Settings → Branches → Add rule for `main`:**
 
 - ✅ **Require a pull request before merging**
+
   - Require approvals: **2** (minimum)
   - Dismiss stale PR approvals when new commits are pushed
   - Require review from code owners
 
 - ✅ **Require status checks to pass before merging**
+
   - Require branches to be up to date before merging
   - Status checks: `ci/tests`, `ci/lint`, `ci/build`
 
@@ -51,10 +53,12 @@ git push -u origin develop
 **Settings → Branches → Add rule for `develop`:**
 
 - ✅ **Require a pull request before merging**
+
   - Require approvals: **1** (minimum)
   - Dismiss stale PR approvals when new commits are pushed
 
 - ✅ **Require status checks to pass before merging**
+
   - Require branches to be up to date before merging
   - Status checks: `ci/tests`, `ci/lint`
 
@@ -78,14 +82,14 @@ git push -u origin develop
 Create `.github/ISSUE_TEMPLATE/` directory with:
 
 **bug_report.md:**
+
 ```markdown
 ---
 name: Bug report
 about: Create a report to help us improve
-title: ''
-labels: 'bug'
-assignees: ''
-
+title: ""
+labels: "bug"
+assignees: ""
 ---
 
 **Describe the bug**
@@ -93,6 +97,7 @@ A clear and concise description of what the bug is.
 
 **To Reproduce**
 Steps to reproduce the behavior:
+
 1. Go to '...'
 2. Click on '....'
 3. Scroll down to '....'
@@ -105,23 +110,24 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Environment:**
- - OS: [e.g. Windows 10]
- - Browser: [e.g. Chrome 120]
- - Version: [e.g. 1.0.0]
+
+- OS: [e.g. Windows 10]
+- Browser: [e.g. Chrome 120]
+- Version: [e.g. 1.0.0]
 
 **Additional context**
 Add any other context about the problem here.
 ```
 
 **feature_request.md:**
+
 ```markdown
 ---
 name: Feature request
 about: Suggest an idea for this project
-title: ''
-labels: 'enhancement'
-assignees: ''
-
+title: ""
+labels: "enhancement"
+assignees: ""
 ---
 
 **Is your feature request related to a problem? Please describe.**
@@ -143,20 +149,24 @@ Create `.github/pull_request_template.md:`
 
 ```markdown
 ## Description
+
 Brief description of changes
 
 ## Type of Change
+
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Breaking change
 - [ ] Documentation update
 
 ## Testing
+
 - [ ] Unit tests pass
 - [ ] Integration tests pass
 - [ ] Manual testing completed
 
 ## Checklist
+
 - [ ] Code follows style guidelines
 - [ ] Self-review completed
 - [ ] Documentation updated
@@ -164,6 +174,7 @@ Brief description of changes
 - [ ] No breaking changes (or documented)
 
 ## Related Issues
+
 Closes #123
 ```
 
@@ -209,58 +220,58 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   test-backend:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    - name: Install dependencies
-      run: |
-        cd backend
-        pip install -r requirements.txt
-    - name: Run tests
-      run: |
-        cd backend
-        pytest
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          cd backend
+          pytest
 
   test-frontend:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-    - name: Install dependencies
-      run: |
-        cd frontend
-        npm ci
-    - name: Run tests
-      run: |
-        cd frontend
-        npm test
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+      - name: Run tests
+        run: |
+          cd frontend
+          npm test
 
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Lint backend
-      run: |
-        cd backend
-        pip install flake8
-        flake8 .
-    - name: Lint frontend
-      run: |
-        cd frontend
-        npm run lint
+      - uses: actions/checkout@v3
+      - name: Lint backend
+        run: |
+          cd backend
+          pip install flake8
+          flake8 .
+      - name: Lint frontend
+        run: |
+          cd frontend
+          npm run lint
 ```
 
 ## 🔐 Security Settings
@@ -279,6 +290,7 @@ jobs:
 **Settings → Secrets and variables → Actions:**
 
 Add the following secrets:
+
 - `DATABASE_URL`
 - `REDIS_URL`
 - `FIREBASE_SERVICE_ACCOUNT`
@@ -325,12 +337,14 @@ Create `.github/CODEOWNERS:`
 **Settings → Environments:**
 
 Create environments:
+
 - **staging**: For develop branch deployments
 - **production**: For main branch deployments
 
 ### 2. Deployment Protection
 
 For each environment:
+
 - ✅ **Required reviewers**: Add deployment approvers
 - ✅ **Wait timer**: 5 minutes (optional)
 - ✅ **Deployment branches**: Restrict to specific branches
@@ -349,6 +363,7 @@ For each environment:
 **Settings → Notifications:**
 
 Configure team notifications for:
+
 - Pull request reviews
 - Issue assignments
 - Security alerts
@@ -379,7 +394,8 @@ Configure team notifications for:
 ### Support
 
 For GitHub-specific issues:
+
 - Check GitHub documentation
 - Contact GitHub support
 - Review repository settings
-- Verify team permissions 
+- Verify team permissions

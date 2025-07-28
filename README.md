@@ -27,12 +27,14 @@ caliber/
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Next.js** - React framework
 - **Tailwind CSS** - Styling
 - **Jest** - Testing
 - **WebSocket** - Real-time updates
 
 ### Backend
+
 - **FastAPI** - Python web framework
 - **SQLAlchemy** - ORM
 - **Alembic** - Database migrations
@@ -42,7 +44,7 @@ caliber/
 
 ## 📋 Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - Python 3.9+
 - Redis
 - Docker (optional)
@@ -50,12 +52,14 @@ caliber/
 ## 🚀 Quick Start
 
 ### 1. Clone the Repository
+
 ```bash
 git clone <repository-url>
 cd caliber
 ```
 
 ### 2. Backend Setup
+
 ```bash
 cd backend
 python -m venv venv
@@ -64,22 +68,26 @@ pip install -r requirements.txt
 ```
 
 ### 3. Frontend Setup
+
 ```bash
 cd frontend
 npm install
 ```
 
 ### 4. Environment Configuration
+
 Copy environment templates and configure:
+
 ```bash
 # Backend
 cp backend/env.template backend/.env
 
-# Frontend  
+# Frontend
 cp frontend/env.template frontend/.env.local
 ```
 
 ### 5. Start Development Servers
+
 ```bash
 # Backend (from backend directory)
 uvicorn main:app --reload
@@ -111,6 +119,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 For support and questions:
+
 - Create an issue in the repository
 - Check the documentation in the `docs/` folder
 - Review the troubleshooting guide

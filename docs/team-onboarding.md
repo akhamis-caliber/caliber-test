@@ -9,7 +9,7 @@ Welcome to the Caliber development team! This guide will help you get started wi
 Before you begin, ensure you have the following installed:
 
 - **Git**: Latest version
-- **Node.js**: 18+ 
+- **Node.js**: 18+
 - **Python**: 3.9+
 - **Docker**: (optional, for containerized development)
 - **VS Code**: (recommended IDE)
@@ -28,6 +28,7 @@ git config --global init.defaultBranch main
 ### 3. Development Environment Setup
 
 #### Backend Setup
+
 ```bash
 cd backend
 python -m venv venv
@@ -36,12 +37,14 @@ pip install -r requirements.txt
 ```
 
 #### Frontend Setup
+
 ```bash
 cd frontend
 npm install
 ```
 
 #### Environment Configuration
+
 ```bash
 # Copy environment templates
 cp backend/env.template backend/.env
@@ -103,12 +106,14 @@ git push -u origin feature/123-your-feature-name
 ### Code Standards
 
 #### Backend (Python)
+
 - Follow PEP 8 style guide
 - Use type hints
 - Write docstrings for all functions
 - Maximum line length: 88 characters (Black formatter)
 
 #### Frontend (JavaScript/React)
+
 - Use ESLint and Prettier
 - Follow React best practices
 - Use functional components with hooks
@@ -286,4 +291,4 @@ We're excited to have you on board! Remember:
 3. Pick up your first task
 4. Start contributing!
 
-Welcome to Caliber! 🚀 
+Welcome to Caliber! 🚀
