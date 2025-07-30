@@ -1,0 +1,140 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'caliber/backend/**'
+      - 'caliber/requirements.txt'
+      - 'caliber/alembic.ini'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [ main, master, develop ]
+    paths:
+      - 'caliber/backend/**'
+      - 'caliber/requirements.txt'
+      - 'caliber/alembic.ini'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:6
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('caliber/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies
+      run: |
+        cd caliber
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio pytest-cov black flake8 mypy
+        
+    - name: Run linting
+      run: |
+        cd caliber
+        black --check backend/
+        flake8 backend/ --max-line-length=88 --extend-ignore=E203,W503
+        mypy backend/ --ignore-missing-imports
+        
+    - name: Run tests
+      run: |
+        cd caliber
+        pytest backend/ -v --cov=backend --cov-report=xml --cov-report=html
+        
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./caliber/coverage.xml
+        flags: backend
+        name: backend-coverage
+        
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        cd caliber
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install bandit safety
+        
+    - name: Run security scan
+      run: |
+        cd caliber
+        bandit -r backend/ -f json -o bandit-report.json || true
+        safety check --json --output safety-report.json || true
+        
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: |
+          caliber/bandit-report.json
+          caliber/safety-report.json
+          
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [test, security-scan]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build and push Docker image
+      run: |
+        cd caliber
+        docker build -t caliber-backend:${{ github.sha }} .
+        echo "Docker image built successfully"
+        
+    - name: Deploy to staging
+      run: |
+        echo "Deploying to staging environment..."
+        # Add your staging deployment commands here
+        # Example: kubectl apply, docker-compose up, etc. 

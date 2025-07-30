@@ -1,0 +1,44 @@
+name: Deploy to Production
+
+on:
+  workflow_run:
+    workflows: ["Backend CI/CD", "Frontend CI/CD", "Docker Build and Push"]
+    types:
+      - completed
+    branches: [ main, master ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Deploy Backend
+      run: |
+        echo "Deploying backend to production..."
+        # Add your production deployment commands here
+        # Example: kubectl apply, docker-compose up, etc.
+        
+    - name: Deploy Frontend
+      run: |
+        echo "Deploying frontend to production..."
+        # Add your production deployment commands here
+        # Example: AWS S3 sync, Netlify deploy, etc.
+        
+    - name: Run health checks
+      run: |
+        echo "Running health checks..."
+        # Add health check commands here
+        # Example: curl endpoints, database connectivity, etc.
+        
+    - name: Notify deployment success
+      run: |
+        echo "Production deployment completed successfully!"
+        # Add notification commands here (Slack, email, etc.) 

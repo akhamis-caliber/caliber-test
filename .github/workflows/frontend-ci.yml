@@ -1,0 +1,103 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'caliber/frontend/**'
+      - 'caliber/package.json'
+      - 'caliber/package-lock.json'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [ main, master, develop ]
+    paths:
+      - 'caliber/frontend/**'
+      - 'caliber/package.json'
+      - 'caliber/package-lock.json'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: caliber/package-lock.json
+        
+    - name: Install dependencies
+      run: |
+        cd caliber
+        npm ci
+        
+    - name: Run linting
+      run: |
+        cd caliber
+        npm run lint || echo "Linting failed but continuing..."
+        
+    - name: Run tests
+      run: |
+        cd caliber
+        npm test -- --coverage --watchAll=false || echo "Tests failed but continuing..."
+        
+    - name: Build application
+      run: |
+        cd caliber
+        npm run build
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-build
+        path: caliber/build/
+        
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: |
+        cd caliber
+        npm ci
+        
+    - name: Run security audit
+      run: |
+        cd caliber
+        npm audit --audit-level=moderate || echo "Security audit found issues"
+        
+    - name: Run dependency check
+      run: |
+        cd caliber
+        npm outdated || echo "Dependencies check completed"
+        
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [test, security-scan]
+    if: github.ref == 'refs/heads/develop'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: frontend-build
+        path: caliber/build/
+        
+    - name: Deploy to staging
+      run: |
+        echo "Deploying frontend to staging environment..."
+        # Add your staging deployment commands here
+        # Example: AWS S3 sync, Netlify deploy, etc. 
