@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  test-db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: test_caliber
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - test_db_data:/var/lib/postgresql/data
+
+  test-redis:
+    image: redis:6
+    ports:
+      - "6380:6379"
+
+  test-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://test_user:test_password@test-db:5432/test_caliber
+      REDIS_URL: redis://test-redis:6379
+      TESTING: "true"
+    depends_on:
+      - test-db
+      - test-redis
+    command: pytest backend/ -v --cov=backend --cov-report=xml
+
+  test-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      CI: "true"
+    command: npm test -- --coverage --watchAll=false
+
+volumes:
+  test_db_data: 
