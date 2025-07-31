@@ -1,0 +1,125 @@
+Caliber Scoring Engine Implementation - File Names & Task Summary
+Day 11: Scoring Configuration & Data Models
+Task 11A: Create Scoring Configuration (2 hours)
+
+scoring_service/config.py - Platform configurations, metrics, weights
+
+Task 11B: Enhanced Scoring Models (1 hour)
+
+db/models.py - Update ScoringResult and Campaign models
+
+Task 11C: Data Preprocessing Service (2 hours)
+
+scoring_service/preprocess.py - Data cleaning, validation, preparation
+
+Task 11D: Normalization Service (2 hours)
+
+scoring_service/normalize.py - Min-max normalization (0-100 scale)
+
+Task 11E: Scoring Engine Core (2 hours)
+
+scoring_service/scoring.py - Weighted scoring, percentiles, optimization lists
+
+Day 12: Scoring Service Integration
+Task 12A: Scoring Schemas (1 hour)
+
+scoring_service/schemas.py - Request/response models for scoring API
+
+Task 12B: Scoring Controller (2 hours)
+
+scoring_service/controllers.py - Business logic for scoring pipeline
+
+Task 12C: Scoring Routes (1 hour)
+
+scoring_service/routes.py - FastAPI endpoints for scoring operations
+
+Task 12D: Complete File Upload Routes (2 hours)
+
+report_service/routes.py - File upload, validation, preview endpoints
+
+Task 12E: Background Task Processing (1.5 hours)
+
+worker/tasks.py - Celery tasks for async scoring
+
+Task 12F: Update Main App (0.5 hours)
+
+main.py - Include scoring and report routers
+
+Day 13: AI Service Implementation
+Task 13A: AI Service Configuration (1 hour)
+
+ai_service/config.py - AI prompt templates and configurations
+
+Task 13B: AI Service Core (2 hours)
+
+ai_service/insight_generator.py - OpenAI integration, insight generation
+
+Task 13C: AI Service Routes (1 hour)
+
+ai_service/routes.py - AI endpoints for insights and chat
+
+Task 13D: AI Service Schemas (1 hour)
+
+ai_service/schemas.py - AI request/response models
+
+Task 13E: AI Service Controllers (2 hours)
+
+ai_service/controllers.py - AI business logic and caching
+
+Task 13F: Update Main App (0.5 hours)
+
+main.py - Include AI service router
+
+Day 14: Export & PDF Generation
+Task 14A: Export Service Implementation (3 hours)
+
+report_service/exports.py - CSV export, whitelist/blacklist generation
+
+Task 14B: PDF Report Service (4 hours)
+
+report_service/pdf_generator.py - Comprehensive PDF reports with charts
+
+Task 14C: Export Routes (1 hour)
+
+report_service/routes.py - Add export endpoints
+
+Day 15: Testing & Integration
+Task 15A: Test Data Setup (1 hour)
+
+tests/test_data.py - Generate realistic test datasets
+
+Task 15B: Scoring Engine Tests (2 hours)
+
+tests/test_scoring.py - Unit tests for scoring components
+
+Task 15C: Integration Tests (2 hours)
+
+tests/test_integration.py - End-to-end scoring pipeline tests
+
+Task 15D: API Tests (2 hours)
+
+tests/test_api.py - FastAPI endpoint testing
+
+Task 15E: Performance Tests (1 hour)
+
+tests/test_performance.py - Load testing and benchmarks
+
+Additional Support Files
+Configuration Updates
+
+requirements.txt - Add new dependencies (openai, reportlab, celery)
+docker-compose.yml - Add Celery worker service
+.env.example - Add OpenAI API key
+
+Database Updates
+
+db/migrations/ - New migration files for scoring models
+alembic.ini - Updated migration configuration
+
+Documentation
+
+README.md - Updated setup and usage instructions
+docs/api.md - API documentation
+docs/scoring.md - Scoring algorithm documentation
+
+This implementation provides a complete, production-ready scoring engine that handles both Trade Desk and PulsePoint campaigns with AI-powered insights and comprehensive reporting capabilities.

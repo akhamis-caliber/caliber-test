@@ -28,13 +28,98 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U caliber_user -d caliber_dev" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Celery Worker for scoring tasks
+  worker-scoring:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://caliber_user:caliber_pass@postgres:5432/caliber_dev
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    command: celery -A worker.celery worker --loglevel=info --queues=scoring --concurrency=2
+    deploy:
+      replicas: 2
+    restart: unless-stopped
+
+  # Celery Worker for maintenance tasks  
+  worker-maintenance:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://caliber_user:caliber_pass@postgres:5432/caliber_dev
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    command: celery -A worker.celery worker --loglevel=info --queues=maintenance,exports,monitoring --concurrency=1
+    restart: unless-stopped
+
+  # Celery Beat Scheduler
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://caliber_user:caliber_pass@postgres:5432/caliber_dev
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    command: celery -A worker.celery beat --loglevel=info
+    restart: unless-stopped
+
+  # Flower for monitoring (optional)
+  flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5555:5555"
+    environment:
+      - DATABASE_URL=postgresql://caliber_user:caliber_pass@postgres:5432/caliber_dev
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    command: celery -A worker.celery flower --port=5555
     restart: unless-stopped
 
 volumes:
-  postgres_data: 
+  postgres_data:
+  redis_data:

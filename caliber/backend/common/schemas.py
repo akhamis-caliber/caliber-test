@@ -3,11 +3,14 @@ from typing import Optional, List, Any
 from datetime import datetime
 import uuid
 
-class APIResponse(BaseModel):
+class BaseResponse(BaseModel):
     success: bool
     data: Optional[Any] = None
     message: Optional[str] = None
     errors: Optional[List[str]] = None
+
+class APIResponse(BaseResponse):
+    pass
 
 class PaginatedResponse(APIResponse):
     data: List[Any]

@@ -3,6 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from common.logging import setup_logging
 from auth_service.routes import router as auth_router
+from campaign_service.routes import router as campaign_router
+from scoring_service.routes import router as scoring_router
+from report_service.routes import router as report_router
+from ai_service.routes import router as ai_router
 
 # Setup logging
 setup_logging()
@@ -32,6 +36,10 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth_router)
+app.include_router(campaign_router)
+app.include_router(scoring_router)
+app.include_router(report_router)
+app.include_router(ai_router)
 
 @app.get("/")
 async def root():

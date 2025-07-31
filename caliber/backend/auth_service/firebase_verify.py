@@ -8,9 +8,12 @@ logger = logging.getLogger(__name__)
 
 # Initialize Firebase Admin SDK
 try:
-    cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
-    firebase_admin.initialize_app(cred)
-    logger.info("Firebase Admin SDK initialized successfully")
+    if settings.FIREBASE_CREDENTIALS_PATH and settings.FIREBASE_CREDENTIALS_PATH != "None":
+        cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
+        firebase_admin.initialize_app(cred)
+        logger.info("Firebase Admin SDK initialized successfully")
+    else:
+        logger.warning("Firebase credentials not provided, Firebase authentication will be disabled")
 except Exception as e:
     logger.error(f"Failed to initialize Firebase Admin SDK: {e}")
 
@@ -19,6 +22,16 @@ async def verify_firebase_token(token: str) -> dict:
     Verify Firebase ID token and return user data
     """
     try:
+        # Check if Firebase is initialized
+        if not firebase_admin._apps:
+            logger.warning("Firebase not initialized, returning mock user data for development")
+            return {
+                'uid': 'dev-user-123',
+                'email': 'dev@example.com',
+                'name': 'Development User',
+                'email_verified': True
+            }
+        
         # Remove 'Bearer ' prefix if present
         if token.startswith('Bearer '):
             token = token[7:]

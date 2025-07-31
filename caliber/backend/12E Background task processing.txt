@@ -1,0 +1,950 @@
+# Task 12E: Background Task Processing Implementation
+
+## **Task Steps Overview**
+
+### **Step 1: Celery Configuration (30 minutes)**
+- Configure Celery app with Redis broker
+- Set up task routing and worker configuration
+- Configure retry policies and error handling
+
+### **Step 2: Core Scoring Tasks (1 hour)**
+- Main campaign scoring task
+- Progress tracking and status updates
+- Error handling and recovery
+
+### **Step 3: Utility Tasks (30 minutes)**
+- File cleanup tasks
+- Health monitoring tasks
+- Maintenance operations
+
+---
+
+## **File 1: `worker/celery.py` - Celery Configuration**
+
+```python
+from celery import Celery
+from celery.signals import worker_ready, worker_shutdown
+from config.settings import settings
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Create Celery app
+celery_app = Celery(
+    "caliber_worker",
+    broker=settings.REDIS_URL,
+    backend=settings.REDIS_URL,
+    include=['worker.tasks']
+)
+
+# Celery configuration
+celery_app.conf.update(
+    # Task serialization
+    task_serializer='json',
+    accept_content=['json'],
+    result_serializer='json',
+    timezone='UTC',
+    enable_utc=True,
+    
+    # Task execution
+    task_track_started=True,
+    task_time_limit=30 * 60,  # 30 minutes max
+    task_soft_time_limit=25 * 60,  # 25 minutes soft limit
+    task_acks_late=True,
+    worker_prefetch_multiplier=1,
+    worker_max_tasks_per_child=1000,
+    
+    # Task routing
+    task_routes={
+        'worker.tasks.process_campaign_scoring': {'queue': 'scoring'},
+        'worker.tasks.cleanup_old_files': {'queue': 'maintenance'},
+        'worker.tasks.generate_export': {'queue': 'exports'},
+        'worker.tasks.health_check': {'queue': 'monitoring'},
+    },
+    
+    # Result backend settings
+    result_expires=3600,  # 1 hour
+    result_backend_transport_options={
+        'master_name': 'mymaster'
+    },
+    
+    # Worker settings
+    worker_log_format='[%(asctime)s: %(levelname)s/%(processName)s] %(message)s',
+    worker_task_log_format='[%(asctime)s: %(levelname)s/%(processName)s][%(task_name)s(%(task_id)s)] %(message)s',
+    
+    # Retry settings
+    task_default_retry_delay=60,  # 1 minute
+    task_max_retries=3,
+    
+    # Rate limiting
+    task_annotations={
+        'worker.tasks.process_campaign_scoring': {'rate_limit': '10/m'},
+        'worker.tasks.cleanup_old_files': {'rate_limit': '1/h'},
+        'worker.tasks.generate_export': {'rate_limit': '50/m'},
+    }
+)
+
+# Periodic tasks configuration
+celery_app.conf.beat_schedule = {
+    'cleanup-old-files': {
+        'task': 'worker.tasks.cleanup_old_files',
+        'schedule': 24 * 60 * 60,  # Run daily at midnight
+        'options': {'queue': 'maintenance'}
+    },
+    'cleanup-old-exports': {
+        'task': 'worker.tasks.cleanup_old_exports',
+        'schedule': 4 * 60 * 60,  # Run every 4 hours
+        'options': {'queue': 'maintenance'}
+    },
+    'health-check': {
+        'task': 'worker.tasks.health_check',
+        'schedule': 5 * 60,  # Run every 5 minutes
+        'options': {'queue': 'monitoring'}
+    },
+    'update-campaign-stats': {
+        'task': 'worker.tasks.update_campaign_statistics',
+        'schedule': 60 * 60,  # Run hourly
+        'options': {'queue': 'maintenance'}
+    }
+}
+
+@worker_ready.connect
+def worker_ready_handler(sender=None, **kwargs):
+    """Handle worker ready event"""
+    logger.info("Celery worker is ready and waiting for tasks")
+
+@worker_shutdown.connect
+def worker_shutdown_handler(sender=None, **kwargs):
+    """Handle worker shutdown event"""
+    logger.info("Celery worker is shutting down")
+
+# Task failure handler
+@celery_app.task(bind=True)
+def task_failure_handler(self, task_id, error, traceback):
+    """Handle task failures"""
+    logger.error(f"Task {task_id} failed: {error}")
+    logger.error(f"Traceback: {traceback}")
+```
+
+---
+
+## **File 2: `worker/tasks.py` - Core Tasks Implementation**
+
+```python
+from celery import current_task
+from celery.exceptions import Retry
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from datetime import datetime, timedelta
+import logging
+import uuid
+import traceback
+import json
+import asyncio
+import os
+from pathlib import Path
+
+from config.settings import settings
+from worker.celery import celery_app
+from scoring_service.controllers import ScoringController
+from report_service.storage import file_storage
+from report_service.exports import ExportService
+
+logger = logging.getLogger(__name__)
+
+# Create database session factory
+engine = create_engine(settings.DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_db_session():
+    """Get database session for tasks"""
+    return SessionLocal()
+
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
+def process_campaign_scoring(self, campaign_id_str: str, user_id_str: str):
+    """
+    Main task for processing campaign scoring
+    
+    Args:
+        campaign_id_str: Campaign UUID as string
+        user_id_str: User UUID as string
+    """
+    campaign_id = uuid.UUID(campaign_id_str)
+    user_id = uuid.UUID(user_id_str)
+    
+    db = get_db_session()
+    task_id = self.request.id
+    
+    try:
+        logger.info(f"Starting scoring task {task_id} for campaign {campaign_id}")
+        
+        # Import here to avoid circular imports
+        from db.models import User, Campaign, ScoringResult
+        from campaign_service.schemas import CampaignStatus
+        
+        # Get user and campaign
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise Exception(f"User {user_id} not found")
+        
+        campaign = db.query(Campaign).filter(
+            Campaign.id == campaign_id,
+            Campaign.user_id == user_id
+        ).first()
+        if not campaign:
+            raise Exception(f"Campaign {campaign_id} not found for user {user_id}")
+        
+        # Update task metadata
+        self.update_state(
+            state='PROGRESS',
+            meta={
+                'campaign_id': campaign_id_str,
+                'current_step': 'initializing',
+                'progress': 0,
+                'message': 'Starting scoring process'
+            }
+        )
+        
+        # Set campaign status to processing
+        campaign.status = CampaignStatus.PROCESSING
+        campaign.progress_percentage = 5
+        db.commit()
+        
+        # Progress tracking function
+        def update_progress(percentage: int, step: str, message: str = ""):
+            campaign.progress_percentage = percentage
+            db.commit()
+            
+            self.update_state(
+                state='PROGRESS',
+                meta={
+                    'campaign_id': campaign_id_str,
+                    'current_step': step,
+                    'progress': percentage,
+                    'message': message,
+                    'timestamp': datetime.utcnow().isoformat()
+                }
+            )
+            logger.info(f"Task {task_id}: {step} - {percentage}% - {message}")
+        
+        # Step 1: Load and validate data
+        update_progress(10, 'loading_data', 'Loading campaign data file')
+        
+        if not campaign.file_path:
+            raise Exception("No file uploaded for campaign")
+        
+        # Step 2: Process scoring using the main controller
+        update_progress(20, 'preprocessing', 'Preprocessing and validating data')
+        
+        # Use the existing scoring controller with progress callbacks
+        result = ScoringController._process_scoring_with_progress(
+            db=db,
+            campaign=campaign,
+            progress_callback=update_progress
+        )
+        
+        # Step 3: Finalize results
+        update_progress(95, 'finalizing', 'Finalizing scoring results')
+        
+        # Update campaign status
+        campaign.status = CampaignStatus.COMPLETED
+        campaign.progress_percentage = 100
+        campaign.completed_at = datetime.utcnow()
+        campaign.error_message = None
+        db.commit()
+        
+        update_progress(100, 'completed', 'Scoring completed successfully')
+        
+        logger.info(f"Scoring task {task_id} completed successfully for campaign {campaign_id}")
+        
+        return {
+            'success': True,
+            'campaign_id': campaign_id_str,
+            'total_records': result.get('total_records', 0),
+            'processing_time': result.get('processing_time', 0),
+            'campaign_score': result.get('campaign_score', 0),
+            'completed_at': datetime.utcnow().isoformat()
+        }
+        
+    except Exception as exc:
+        logger.error(f"Scoring task {task_id} failed: {exc}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        
+        # Update campaign with error
+        try:
+            campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+            if campaign:
+                campaign.status = CampaignStatus.FAILED
+                campaign.error_message = str(exc)
+                campaign.progress_percentage = 0
+                db.commit()
+        except Exception as db_error:
+            logger.error(f"Failed to update campaign error status: {db_error}")
+        
+        # Update task state
+        self.update_state(
+            state='FAILURE',
+            meta={
+                'campaign_id': campaign_id_str,
+                'error': str(exc),
+                'timestamp': datetime.utcnow().isoformat()
+            }
+        )
+        
+        # Retry logic
+        if self.request.retries < self.max_retries:
+            countdown = 2 ** self.request.retries * 60  # Exponential backoff
+            logger.info(f"Retrying task {task_id} in {countdown} seconds (attempt {self.request.retries + 1})")
+            raise self.retry(exc=exc, countdown=countdown)
+        
+        raise exc
+        
+    finally:
+        db.close()
+
+@celery_app.task(bind=True, max_retries=2)
+def generate_export(self, campaign_id_str: str, user_id_str: str, export_format: str, 
+                   include_insights: bool = True, filters: dict = None):
+    """
+    Generate export files in background
+    
+    Args:
+        campaign_id_str: Campaign UUID as string
+        user_id_str: User UUID as string
+        export_format: Export format ('csv' or 'pdf')
+        include_insights: Whether to include AI insights
+        filters: Export filters
+    """
+    campaign_id = uuid.UUID(campaign_id_str)
+    user_id = uuid.UUID(user_id_str)
+    
+    db = get_db_session()
+    task_id = self.request.id
+    
+    try:
+        logger.info(f"Starting export task {task_id} for campaign {campaign_id} in {export_format} format")
+        
+        from db.models import Campaign
+        
+        # Verify campaign
+        campaign = db.query(Campaign).filter(
+            Campaign.id == campaign_id,
+            Campaign.user_id == user_id
+        ).first()
+        
+        if not campaign:
+            raise Exception(f"Campaign {campaign_id} not found")
+        
+        self.update_state(
+            state='PROGRESS',
+            meta={
+                'campaign_id': campaign_id_str,
+                'format': export_format,
+                'progress': 25,
+                'message': f'Generating {export_format.upper()} export'
+            }
+        )
+        
+        # Generate export
+        if export_format == "csv":
+            export_data = ExportService.export_to_csv(
+                db=db,
+                campaign_id=campaign_id,
+                filters=filters,
+                include_breakdown=include_insights
+            )
+        elif export_format == "pdf":
+            from report_service.pdf_generator import PDFReportGenerator
+            pdf_generator = PDFReportGenerator()
+            export_data = pdf_generator.generate_campaign_report(
+                db=db,
+                campaign_id=campaign_id,
+                include_insights=include_insights
+            )
+        else:
+            raise ValueError(f"Unsupported export format: {export_format}")
+        
+        self.update_state(
+            state='PROGRESS',
+            meta={
+                'campaign_id': campaign_id_str,
+                'format': export_format,
+                'progress': 75,
+                'message': 'Saving export file'
+            }
+        )
+        
+        # Save export file
+        filename = f"caliber_export_{campaign.name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{export_format}"
+        
+        # Use asyncio to call async storage function
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            export_path, file_size = loop.run_until_complete(
+                file_storage.save_uploaded_file(
+                    export_data, filename, str(user_id), f"export_{campaign_id}"
+                )
+            )
+        finally:
+            loop.close()
+        
+        result = {
+            'success': True,
+            'export_path': export_path,
+            'filename': filename,
+            'file_size': file_size,
+            'format': export_format,
+            'expires_at': (datetime.utcnow() + timedelta(hours=24)).isoformat()
+        }
+        
+        self.update_state(
+            state='SUCCESS',
+            meta={
+                'campaign_id': campaign_id_str,
+                'format': export_format,
+                'progress': 100,
+                'message': 'Export completed successfully',
+                'result': result
+            }
+        )
+        
+        logger.info(f"Export task {task_id} completed: {filename} ({file_size} bytes)")
+        return result
+        
+    except Exception as exc:
+        logger.error(f"Export task {task_id} failed: {exc}")
+        
+        self.update_state(
+            state='FAILURE',
+            meta={
+                'campaign_id': campaign_id_str,
+                'format': export_format,
+                'error': str(exc),
+                'timestamp': datetime.utcnow().isoformat()
+            }
+        )
+        
+        if self.request.retries < self.max_retries:
+            countdown = 2 ** self.request.retries * 30
+            raise self.retry(exc=exc, countdown=countdown)
+        
+        raise exc
+        
+    finally:
+        db.close()
+
+@celery_app.task
+def cleanup_old_files():
+    """
+    Cleanup old uploaded files and exports
+    Runs daily to maintain storage hygiene
+    """
+    db = get_db_session()
+    
+    try:
+        logger.info("Starting file cleanup task")
+        
+        from db.models import Campaign
+        
+        # Clean up campaigns older than 30 days
+        cutoff_date = datetime.utcnow() - timedelta(days=30)
+        
+        old_campaigns = db.query(Campaign).filter(
+            Campaign.created_at < cutoff_date,
+            Campaign.file_path.isnot(None)
+        ).all()
+        
+        cleaned_count = 0
+        total_size_freed = 0
+        
+        # Setup asyncio for file operations
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            for campaign in old_campaigns:
+                try:
+                    # Get file size before deletion
+                    file_content = loop.run_until_complete(
+                        file_storage.read_file(campaign.file_path)
+                    )
+                    file_size = len(file_content)
+                    
+                    # Delete file
+                    loop.run_until_complete(
+                        file_storage.delete_file(campaign.file_path)
+                    )
+                    
+                    # Clear file path in database
+                    campaign.file_path = None
+                    total_size_freed += file_size
+                    cleaned_count += 1
+                    
+                    logger.info(f"Cleaned up file for campaign {campaign.id} ({file_size} bytes)")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to cleanup file for campaign {campaign.id}: {e}")
+        finally:
+            loop.close()
+        
+        db.commit()
+        
+        logger.info(f"File cleanup completed: {cleaned_count} files removed, {total_size_freed} bytes freed")
+        
+        return {
+            'files_cleaned': cleaned_count,
+            'bytes_freed': total_size_freed,
+            'cutoff_date': cutoff_date.isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"File cleanup task failed: {e}")
+        raise
+    finally:
+        db.close()
+
+@celery_app.task
+def cleanup_old_exports():
+    """
+    Cleanup old export files (older than 24 hours)
+    Runs every 4 hours
+    """
+    try:
+        logger.info("Starting export cleanup task")
+        
+        storage_path = Path("storage")
+        cutoff_time = datetime.utcnow() - timedelta(hours=24)
+        
+        cleaned_count = 0
+        total_size_freed = 0
+        
+        # Find and remove old export files
+        for user_dir in storage_path.iterdir():
+            if user_dir.is_dir():
+                for file_path in user_dir.glob("export_*"):
+                    try:
+                        # Check file modification time
+                        file_mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
+                        
+                        if file_mtime < cutoff_time:
+                            file_size = file_path.stat().st_size
+                            file_path.unlink()
+                            
+                            cleaned_count += 1
+                            total_size_freed += file_size
+                            
+                            logger.info(f"Cleaned up export file: {file_path} ({file_size} bytes)")
+                            
+                    except Exception as e:
+                        logger.error(f"Failed to cleanup export file {file_path}: {e}")
+        
+        logger.info(f"Export cleanup completed: {cleaned_count} files removed, {total_size_freed} bytes freed")
+        
+        return {
+            'exports_cleaned': cleaned_count,
+            'bytes_freed': total_size_freed,
+            'cutoff_time': cutoff_time.isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Export cleanup task failed: {e}")
+        raise
+
+@celery_app.task
+def health_check():
+    """
+    Health check task to monitor system status
+    Runs every 5 minutes
+    """
+    try:
+        db = get_db_session()
+        
+        # Test database connection
+        try:
+            from db.models import Campaign
+            campaign_count = db.query(Campaign).count()
+            db_status = "healthy"
+        except Exception as e:
+            db_status = f"unhealthy: {str(e)}"
+            campaign_count = 0
+        finally:
+            db.close()
+        
+        # Test Redis connection
+        try:
+            from config.redis import redis_manager
+            redis_client = redis_manager.get_client()
+            if redis_client:
+                redis_client.ping()
+                redis_status = "healthy"
+            else:
+                redis_status = "disconnected"
+        except Exception as e:
+            redis_status = f"unhealthy: {str(e)}"
+        
+        # Test file storage
+        try:
+            storage_path = Path("storage")
+            storage_available = storage_path.exists() and storage_path.is_dir()
+            storage_status = "healthy" if storage_available else "unavailable"
+        except Exception as e:
+            storage_status = f"unhealthy: {str(e)}"
+        
+        health_status = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'database': {
+                'status': db_status,
+                'campaign_count': campaign_count
+            },
+            'redis': {
+                'status': redis_status
+            },
+            'storage': {
+                'status': storage_status
+            },
+            'overall': 'healthy' if all(
+                status in ['healthy'] for status in [db_status, redis_status, storage_status]
+            ) else 'degraded'
+        }
+        
+        logger.info(f"Health check completed: {health_status['overall']}")
+        return health_status
+        
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {
+            'timestamp': datetime.utcnow().isoformat(),
+            'overall': 'failed',
+            'error': str(e)
+        }
+
+@celery_app.task
+def update_campaign_statistics():
+    """
+    Update campaign statistics and metrics
+    Runs hourly
+    """
+    db = get_db_session()
+    
+    try:
+        logger.info("Starting campaign statistics update")
+        
+        from db.models import Campaign, User, ScoringResult
+        from sqlalchemy import func
+        
+        # Calculate statistics
+        stats = {
+            'total_campaigns': db.query(Campaign).count(),
+            'completed_campaigns': db.query(Campaign).filter(
+                Campaign.status == 'completed'
+            ).count(),
+            'processing_campaigns': db.query(Campaign).filter(
+                Campaign.status == 'processing'
+            ).count(),
+            'total_users': db.query(User).count(),
+            'total_scored_domains': db.query(ScoringResult).count(),
+            'avg_campaign_score': db.query(func.avg(ScoringResult.score)).scalar() or 0
+        }
+        
+        # Store in Redis for quick access
+        try:
+            from config.redis import redis_manager
+            redis_client = redis_manager.get_client()
+            if redis_client:
+                redis_client.setex(
+                    'campaign_statistics',
+                    3600,  # 1 hour expiry
+                    json.dumps(stats)
+                )
+        except Exception as e:
+            logger.warning(f"Failed to cache statistics in Redis: {e}")
+        
+        logger.info(f"Campaign statistics updated: {stats}")
+        return stats
+        
+    except Exception as e:
+        logger.error(f"Failed to update campaign statistics: {e}")
+        raise
+    finally:
+        db.close()
+
+@celery_app.task(bind=True)
+def send_completion_notification(self, campaign_id_str: str, user_email: str):
+    """
+    Send notification when campaign scoring is completed
+    (Placeholder for email/notification integration)
+    """
+    try:
+        logger.info(f"Sending completion notification for campaign {campaign_id_str} to {user_email}")
+        
+        # TODO: Integrate with email service (SendGrid, SES, etc.)
+        # For now, just log the notification
+        
+        notification_data = {
+            'campaign_id': campaign_id_str,
+            'user_email': user_email,
+            'message': 'Your campaign scoring has been completed',
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        
+        # Store notification in Redis for potential UI pickup
+        try:
+            from config.redis import redis_manager
+            redis_client = redis_manager.get_client()
+            if redis_client:
+                redis_client.lpush(
+                    f'notifications:{user_email}',
+                    json.dumps(notification_data)
+                )
+                redis_client.expire(f'notifications:{user_email}', 86400)  # 24 hours
+        except Exception as e:
+            logger.warning(f"Failed to store notification: {e}")
+        
+        return notification_data
+        
+    except Exception as e:
+        logger.error(f"Failed to send completion notification: {e}")
+        raise
+```
+
+---
+
+## **File 3: `worker/__init__.py` - Worker Package Init**
+
+```python
+"""
+Caliber Background Task Worker Package
+
+This package contains all background task processing functionality including:
+- Campaign scoring processing
+- File management and cleanup
+- Export generation
+- System health monitoring
+- Maintenance tasks
+"""
+
+from .celery import celery_app
+from . import tasks
+
+__all__ = ['celery_app', 'tasks']
+```
+
+---
+
+## **File 4: `docker-compose.yml` - Updated with Worker Services**
+
+```yaml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: caliber_dev
+      POSTGRES_USER: caliber_user
+      POSTGRES_PASSWORD: caliber_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U caliber_user -d caliber_dev"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://caliber_user:caliber_pass@postgres:5432/caliber_dev
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Celery Worker for scoring tasks
+  worker-scoring:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql://caliber_user:caliber_pass@postgres:5432/caliber_dev
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    command: celery -A worker.celery worker --loglevel=info --queues=scoring --concurrency=2
+    deploy:
+      replicas: 2
+
+  # Celery Worker for maintenance tasks  
+  worker-maintenance:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql://caliber_user:caliber_pass@postgres:5432/caliber_dev
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    command: celery -A worker.celery worker --loglevel=info --queues=maintenance,exports,monitoring --concurrency=1
+
+  # Celery Beat Scheduler
+  scheduler:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql://caliber_user:caliber_pass@postgres:5432/caliber_dev
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    command: celery -A worker.celery beat --loglevel=info
+
+  # Flower for monitoring (optional)
+  flower:
+    build: .
+    ports:
+      - "5555:5555"
+    environment:
+      - DATABASE_URL=postgresql://caliber_user:caliber_pass@postgres:5432/caliber_dev
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    command: celery -A worker.celery flower --port=5555
+
+volumes:
+  postgres_data:
+  redis_data:
+```
+
+---
+
+## **File 5: `requirements.txt` - Updated Dependencies**
+
+```txt
+# Existing dependencies...
+celery[redis]==5.3.4
+flower==2.0.1
+kombu==5.3.4
+billiard==4.2.0
+```
+
+---
+
+## **File 6: `scripts/start_workers.sh` - Worker Management Script**
+
+```bash
+#!/bin/bash
+
+# Caliber Worker Management Script
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+print_status() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Check if Redis is running
+check_redis() {
+    print_status "Checking Redis connection..."
+    if redis-cli ping > /dev/null 2>&1; then
+        print_status "Redis is running"
+    else
+        print_error "Redis is not running. Please start Redis first."
+        exit 1
+    fi
+}
+
+# Start scoring workers
+start_scoring_workers() {
+    print_status "Starting scoring workers..."
+    celery -A worker.celery worker \
+        --loglevel=info \
+        --queues=scoring \
+        --concurrency=2 \
+        --hostname=scoring@%h \
+        --pidfile=/tmp/celery_scoring.pid \
+        --logfile=logs/celery_scoring.log \
+        --detach
+}
+
+# Start maintenance workers
+start_maintenance_workers() {
+    print_status "Starting maintenance workers..."
+    celery -A worker.celery worker \
+        --loglevel=info \
+        --queues=maintenance,exports,monitoring \
+        --concurrency=1 \
+        --hostname=maintenance@%h \
+        --pidfile=/tmp/celery_maintenance.pid \
+        --logfile=logs/celery_maintenance.log \
+        --detach
+}
+
+# Start beat scheduler
+start_scheduler() {
+    print_status "Starting beat scheduler..."
+    celery -A worker.celery beat \
+        --loglevel=info \
+        --pidfile=/tmp/celery_beat.pid \
+        --logfile=logs/celery_beat.log \
+        --detach
+}
+
+# Start flower monitoring
+start_flower() {
+    print_status "Starting Flower monitoring..."
+    celery -A worker.celery flower \
+        --port=5555 \
+        --pidfile=/tmp/celery_flower.pid \
+        --logfile=logs/celery_flower.log \
+        --detach
+}
+
+# Stop all workers
+stop_workers() {
+    print_status "Stopping all Celery processes..."
+    
+    # Stop workers
