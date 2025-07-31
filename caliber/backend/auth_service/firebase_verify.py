@@ -37,3 +37,4 @@ async def verify_firebase_token(token: str) -> dict:
     except Exception as e:
         logger.error(f"Firebase token verification failed: {e}")
         raise AuthenticationError("Token verification failed")
+

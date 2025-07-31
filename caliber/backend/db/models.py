@@ -83,3 +83,4 @@ class AIInsight(BaseModel):
     
     # Relationships
     campaign = relationship("Campaign", back_populates="insights")
+
