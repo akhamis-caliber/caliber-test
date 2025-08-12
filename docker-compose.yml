@@ -33,11 +33,16 @@ services:
     environment:
       - DATABASE_URL=postgresql://caliber_user:caliber_password@postgres:5432/caliber_db
       - REDIS_URL=redis://redis:6379
+      - FIREBASE_CREDENTIALS_PATH=/app/firebase-service-account.json
+      - FIREBASE_PROJECT_ID=caliber-auth
+      - JWT_SECRET_KEY=caliber-jwt-secret-key-change-this-in-production
+      - SECRET_KEY=caliber-secret-key-change-this-in-production
     depends_on:
       - postgres
       - redis
     volumes:
       - ./storage:/app/storage
+      - ./backend/firebase-service-account.json:/app/firebase-service-account.json
     networks:
       - caliber-network
 
@@ -50,11 +55,16 @@ services:
     environment:
       - DATABASE_URL=postgresql://caliber_user:caliber_password@postgres:5432/caliber_db
       - REDIS_URL=redis://redis:6379
+      - FIREBASE_CREDENTIALS_PATH=/app/firebase-service-account.json
+      - FIREBASE_PROJECT_ID=caliber-auth
+      - JWT_SECRET_KEY=caliber-jwt-secret-key-change-this-in-production
+      - SECRET_KEY=caliber-secret-key-change-this-in-production
     depends_on:
       - postgres
       - redis
     volumes:
       - ./storage:/app/storage
+      - ./backend/firebase-service-account.json:/app/firebase-service-account.json
     networks:
       - caliber-network
 

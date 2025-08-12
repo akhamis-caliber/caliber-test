@@ -12,24 +12,24 @@ import {
   updateProfile
 } from 'firebase/auth';
 
-// Check if Firebase environment variables are configured
-const isFirebaseConfigured = process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
-                            process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN &&
-                            process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+// Firebase configuration - Updated to use caliber-auth project to match backend
+const firebaseConfig = {
+  apiKey: "AIzaSyDXNQNVinIkWhutIn7ScJtmf_KT9GyZwFk",
+  authDomain: "caliber-auth.firebaseapp.com",
+  projectId: "caliber-auth",
+  storageBucket: "caliber-auth.firebasestorage.app",
+  messagingSenderId: "116374690154457358557",
+  appId: "1:116374690154457358557:web:421e5303e714ba0fdbbf08"
+};
 
 let app, auth, googleProvider;
 
-if (isFirebaseConfigured) {
-  // Firebase configuration
-  const firebaseConfig = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
-  };
+// Check if Firebase configuration is valid
+const isFirebaseConfigured = firebaseConfig.apiKey && 
+                            firebaseConfig.authDomain &&
+                            firebaseConfig.projectId;
 
+if (isFirebaseConfigured) {
   try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
@@ -44,10 +44,11 @@ if (isFirebaseConfigured) {
     auth = null;
     googleProvider = null;
   }
-} else {
-  console.warn('Firebase environment variables not configured. Using mock authentication.');
-  auth = null;
-  googleProvider = null;
+}
+
+// Check if Firebase was initialized successfully
+if (!auth || !googleProvider) {
+  console.warn('Firebase initialization failed. Authentication will not work.');
 }
 
 // Auth methods

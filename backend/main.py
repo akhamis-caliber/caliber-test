@@ -14,6 +14,7 @@ from campaign_service.routes import campaign_router
 from scoring_service.routes import scoring_router
 from report_service.routes.reports import router as report_router
 from ai_service.routes import router as ai_router
+from notification_service.routes import router as notification_router
 
 # Import dashboard router
 from dashboard_service.routes import dashboard_router
@@ -52,6 +53,7 @@ app.include_router(scoring_router, prefix="/api/scoring", tags=["Scoring"])
 app.include_router(report_router, prefix="/api", tags=["Reports"])
 app.include_router(ai_router, prefix="/api/ai", tags=["AI Services"])
 app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
+app.include_router(notification_router, prefix="/api/notifications", tags=["Notifications"])
 
 @app.get("/")
 async def root():

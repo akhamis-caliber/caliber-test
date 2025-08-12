@@ -38,65 +38,65 @@ api.interceptors.response.use(
 
 // Auth API
 export const authAPI = {
-  login: (credentials) => api.post('/api/auth/login', credentials),
-  register: (userData) => api.post('/api/auth/register', userData),
-  verifyToken: (token) => api.post('/api/auth/verify', { token }),
-  getCurrentUser: () => api.get('/api/auth/me'),
+  login: (credentials) => api.post('/api/v1/auth/login', credentials),
+  verifyToken: (token) => api.post('/api/v1/auth/login', { token }),
+  getCurrentUser: () => api.get('/api/v1/auth/profile'),
+  updateProfile: (name) => api.put(`/api/v1/auth/profile?name=${name}`),
 };
 
 // Campaign API
 export const campaignAPI = {
-  getCampaigns: () => api.get('/api/campaigns'),
-  getCampaign: (id) => api.get(`/api/campaigns/${id}`),
-  createCampaign: (campaignData) => api.post('/api/campaigns', campaignData),
-  updateCampaign: (id, campaignData) => api.put(`/api/campaigns/${id}`, campaignData),
-  deleteCampaign: (id) => api.delete(`/api/campaigns/${id}`),
-  getTemplates: () => api.get('/api/campaigns/templates'),
-  getCampaignStats: (id) => api.get(`/api/campaigns/${id}/stats`),
-  getCampaignResults: (id) => api.get(`/api/campaigns/${id}/results`),
+  getCampaigns: () => api.get('/api/v1/campaigns'),
+  getCampaign: (id) => api.get(`/api/v1/campaigns/${id}`),
+  createCampaign: (campaignData) => api.post('/api/v1/campaigns', campaignData),
+  updateCampaign: (id, campaignData) => api.put(`/api/v1/campaigns/${id}`, campaignData),
+  deleteCampaign: (id) => api.delete(`/api/v1/campaigns/${id}`),
+  getTemplates: () => api.get('/api/v1/campaigns/templates'),
+  getCampaignStats: (id) => api.get(`/api/v1/campaigns/${id}/stats`),
+  getCampaignResults: (id) => api.get(`/api/v1/campaigns/${id}/results`),
 };
 
 // Report API
 export const reportAPI = {
-  getReports: () => api.get('/api/reports'),
-  getReport: (id) => api.get(`/api/reports/${id}`),
-  uploadFile: (formData) => api.post('/api/reports/upload', formData, {
+  getReports: () => api.get('/api/v1/reports'),
+  getReport: (id) => api.get(`/api/v1/reports/${id}`),
+  uploadFile: (formData) => api.post('/api/v1/reports/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
   }),
-  getReportStatus: (id) => api.get(`/api/reports/${id}/status`),
-  downloadReport: (id) => api.get(`/api/reports/${id}/download`),
-  linkReportToCampaign: (reportId, campaignId) => api.put(`/api/reports/${reportId}/link-campaign`, { campaign_id: campaignId }),
-  updateReportCampaign: (reportId, campaignId) => api.put(`/api/reports/${reportId}`, { campaign_id: campaignId }),
+  getReportStatus: (id) => api.get(`/api/v1/reports/${id}/status`),
+  downloadReport: (id) => api.get(`/api/v1/reports/${id}/download`),
+  linkReportToCampaign: (reportId, campaignId) => api.put(`/api/v1/reports/${reportId}/link-campaign`, { campaign_id: campaignId }),
+  updateReportCampaign: (reportId, campaignId) => api.put(`/api/v1/reports/${reportId}`, { campaign_id: campaignId }),
 };
 
 // Scoring API
 export const scoringAPI = {
   // Report scoring
-  scoreReport: (reportId, config) => api.post(`/api/scoring/score-report/${reportId}`, { config }),
-  scoreReportBackground: (reportId, config) => api.post(`/api/scoring/score-report/${reportId}`, { config, background: true }),
+  scoreReport: (reportId, config) => api.post(`/scoring/start`, { config }),
+  scoreReportBackground: (reportId, config) => api.post(`/scoring/start`, { config, background: true }),
   
   // Scoring jobs
-  getScoringJobs: (params) => api.get('/api/scoring/scoring-jobs', { params }),
-  getScoringJob: (jobId) => api.get(`/api/scoring/scoring-jobs/${jobId}`),
+  getScoringJobs: (params) => api.get('/scoring/jobs', { params }),
+  getScoringJob: (jobId) => api.get(`/scoring/jobs/${jobId}`),
   
   // Campaign scoring
-  scoreAllCampaignReports: (campaignId, config) => api.post(`/api/campaigns/${campaignId}/score-all-reports`, { config }),
-  getCampaignScoringAnalytics: (campaignId) => api.get(`/api/campaigns/${campaignId}/scoring-analytics`),
-  getCampaignScoringPerformance: (campaignId) => api.get(`/api/campaigns/${campaignId}/scoring-performance`),
-  getCampaignScoringHistory: (campaignId, params) => api.get(`/api/scoring/campaigns/${campaignId}/scoring-history`, { params }),
+  scoreAllCampaignReports: (campaignId, config) => api.post(`/api/v1/campaigns/${campaignId}/score-all-reports`, { config }),
+  getCampaignScoringAnalytics: (campaignId) => api.get(`/api/v1/campaigns/${campaignId}/scoring-analytics`),
+  getCampaignScoringPerformance: (campaignId) => api.get(`/api/v1/campaigns/${campaignId}/scoring-performance`),
+  getCampaignScoringHistory: (campaignId, params) => api.get(`/scoring/campaigns/${campaignId}/scoring-history`, { params }),
   
   // Detailed scoring results for scoring results page
-  getDetailedScoringResults: (campaignId, params) => api.get(`/api/scoring/detailed-results/${campaignId}`, { params }),
-  generateWhitelist: (campaignId, percentage = 25) => api.post(`/api/scoring/generate-lists/${campaignId}`, { list_type: 'whitelist', percentage }),
-  generateBlacklist: (campaignId, percentage = 25) => api.post(`/api/scoring/generate-lists/${campaignId}`, { list_type: 'blacklist', percentage }),
+  getDetailedScoringResults: (campaignId, params) => api.get(`/scoring/results/${campaignId}`, { params }),
+  generateWhitelist: (campaignId, percentage = 25) => api.post(`/scoring/optimization-list`, { list_type: 'whitelist', percentage }),
+  generateBlacklist: (campaignId, percentage = 25) => api.post(`/scoring/optimization-list`, { list_type: 'blacklist', percentage }),
   
   // Method comparison
-  compareScoringMethods: (campaignId, methods) => api.post(`/api/scoring/campaigns/${campaignId}/compare-methods`, { methods }),
+  compareScoringMethods: (campaignId, methods) => api.post(`/scoring/campaigns/${campaignId}/compare-methods`, { methods }),
   
   // Metric analysis
-  analyzeMetric: (metricName, params) => api.get(`/api/scoring/metrics/${metricName}/analysis`, { params }),
+  analyzeMetric: (metricName, params) => api.get(`/scoring/metrics/${metricName}/analysis`, { params }),
   
   // Legacy endpoints
   getResults: (reportId) => api.get(`/api/scoring/results/${reportId}`),
