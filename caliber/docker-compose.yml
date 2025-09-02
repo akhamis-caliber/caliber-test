@@ -1,0 +1,138 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: caliber
+      MONGO_INITDB_ROOT_PASSWORD: caliber123
+      MONGO_INITDB_DATABASE: caliber
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - caliber-network
+
+  # Redis for background tasks
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - caliber-network
+
+  # Caliber Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend
+      - ./storage:/app/storage
+    environment:
+      - MONGO_URL=mongodb://caliber:caliber123@mongodb:27017/caliber?authSource=admin
+      - DATABASE_URL=mongodb://caliber:caliber123@mongodb:27017/caliber?authSource=admin
+      - DB_NAME=caliber
+      - REDIS_URL=redis://redis:6379/0
+      - STORAGE_ROOT=/app/storage
+      - FRONTEND_ORIGIN=http://localhost:3000
+      - OPENAI_API_KEY=mok
+      - DEV_BYPASS_TOKEN=dev-bypass-token-123
+      - DEBUG=true
+      - SCORE_THRESHOLD_GOOD=70.0
+      - SCORE_THRESHOLD_MODERATE=40.0
+      - CTR_SENSITIVITY_BOOST=0.1
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - caliber-network
+
+  # Background Worker (Optional - for async tasks)
+  # DISABLED: Worker service temporarily disabled due to module compatibility issues
+  # Current Caliber backend handles all processing synchronously via FastAPI
+  # Re-enable and update worker configuration if background processing is needed
+  # worker:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.backend
+  #   restart: unless-stopped
+  #   command: celery -A worker.celery worker --loglevel=info
+  #   volumes:
+  #     - ./backend:/app/backend
+  #     - ./storage:/app/storage
+  #     - ./worker:/app/worker
+  #   environment:
+  #     - MONGO_URL=mongodb://caliber:caliber123@mongodb:27017/caliber?authSource=admin
+  #     - DATABASE_URL=mongodb://caliber:caliber123@mongodb:27017/caliber?authSource=admin
+  #     - DB_NAME=caliber
+  #     - REDIS_URL=redis://redis:6379/0
+  #     - STORAGE_ROOT=/app/storage
+  #     - OPENAI_API_KEY=mok
+  #   depends_on:
+  #     mongodb:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - caliber-network
+
+  # Caliber Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules
+    environment:
+      - REACT_APP_BACKEND_URL=http://localhost:8000
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - caliber-network
+
+# Persistent Data Volumes
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# Network Configuration
+networks:
+  caliber-network:
+    driver: bridge

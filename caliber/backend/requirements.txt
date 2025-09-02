@@ -1,0 +1,57 @@
+# Core FastAPI with upgraded version
+fastapi==0.110.1
+uvicorn[standard]==0.25.0
+pydantic==2.6.4
+pydantic-settings==2.1.0
+starlette==0.37.2
+
+# Database - MongoDB
+pymongo==4.5.0
+motor==3.3.1
+beanie==1.24.0
+
+# Auth & Security
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.9
+bcrypt==4.0.1
+
+# Redis & Celery (optional for background processing)
+redis==5.0.1
+celery==5.3.4
+
+# File processing
+pandas==2.2.0
+openpyxl==3.1.2
+xlrd==2.0.1
+
+# AI/ML
+openai==1.6.1
+scikit-learn==1.3.2
+numpy==1.26.0
+
+# PDF generation
+reportlab==4.0.8
+matplotlib==3.8.2
+
+# Testing
+pytest==8.0.0
+pytest-asyncio==0.21.1
+httpx==0.25.2
+pytest-cov==4.1.0
+
+# Code quality
+ruff==0.1.6
+black==24.1.1
+isort==5.13.2
+mypy==1.8.0
+
+# Utilities
+python-dotenv==1.0.1
+typer==0.9.0
+cryptography==42.0.8
+email-validator==2.2.0
+pyjwt==2.10.1
+passlib==1.7.4
+tzdata==2024.2
+requests==2.31.0
+jq==1.6.0
