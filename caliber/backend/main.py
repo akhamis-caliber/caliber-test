@@ -463,7 +463,7 @@ async def create_campaign(
         campaign_id=campaign.id,
         filename=file.filename,
         storage_path=f"org_{org_id}/campaign_{campaign.id}/{file.filename}",
-        status=ReportStatus.PROCESSING
+        status=ReportStatus.SCORING
     )
     await report.insert()
     
