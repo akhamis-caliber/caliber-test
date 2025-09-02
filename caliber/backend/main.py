@@ -35,9 +35,6 @@ logger = logging.getLogger(__name__)
 # Import database models
 from db.models import User, Organization, Membership, Campaign, Report, ScoreRow, UserRole, PasswordReset, ScoreStatus, ReportStatus, CampaignStatus, CampaignGoal, AnalysisLevel, CampaignType
 
-# Import scoring engine
-# from scoring_optimization import OptimizedScoringProcessor
-
 # Create FastAPI app
 app = FastAPI(
     title="Caliber API",
