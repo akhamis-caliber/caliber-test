@@ -41,6 +41,8 @@ const CaliberDemo = () => {
   });
   const [registrationErrors, setRegistrationErrors] = useState({});
   const [passwordStrength, setPasswordStrength] = useState(null);
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Campaign Wizard Data
   const [campaignData, setCampaignData] = useState({
@@ -1034,8 +1036,8 @@ const CaliberDemo = () => {
   }, [user, fetchCampaigns]);
 
   // Add error handling state
-  const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // const [error, setError] = useState(null);
+  // const [isLoading, setIsLoading] = useState(false);
 
   // Enhanced error handling for API calls
   const handleApiError = (error, message = 'An error occurred') => {
