@@ -74,7 +74,8 @@ const CaliberDemo = () => {
   // WebSocket progress tracking functions
   const connectWebSocket = (campaignId) => {
     try {
-      const wsUrl = `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}`.replace('http', 'ws');
+      // Use localhost for WebSocket connections from browser
+      const wsUrl = 'ws://localhost:8000';
       const ws = new WebSocket(`${wsUrl}/ws/progress/${campaignId}`);
       
       ws.onopen = () => {
